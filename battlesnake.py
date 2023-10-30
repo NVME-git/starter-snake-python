@@ -1,4 +1,4 @@
-# TODO: Avoid obstacles
+# TODO: Define risky moves as backups if no safe moves
 # TODO: Avoid loops
 # TODO: Rank moves and choose best move
 
@@ -85,6 +85,19 @@ def get_closest_target(my_head: Dict, targets: List[Dict]) -> Dict:
     targets_distance.sort(key=lambda x: x[1])
     return targets_distance[0][0] if targets_distance else None
 
+def avoid_hazards(hazards:List[Dict], safe_moves: List[str], possible_moves:Dict) -> List[str]:
+    logging.debug(f"hazards:{hazards}")
+    new_safe_moves = []
+    for safe_move in safe_moves:
+        safe_coord = possible_moves[safe_move]
+        if safe_coord in hazards: # add hazardous move to the end of the list
+            new_safe_moves = new_safe_moves + [safe_move]
+        else: # add safe move to the front of the list
+            new_safe_moves = [safe_move] + new_safe_moves
+    logging.debug(f"new safe moves:{new_safe_moves}")
+    return new_safe_moves
+
+
 def move(data: Dict) -> Dict:
     turn_number = data['turn']
     logging.debug(f'Turn: {turn_number}')
@@ -96,24 +109,28 @@ def move(data: Dict) -> Dict:
     board_height = data["board"]["height"]
     snakes = data["board"]["snakes"]
     foods = data["board"]["food"]
+    hazards = data["board"]["hazards"]
 
     possible_moves = get_possible_moves(my_head)
     safe_moves = get_safe_moves(possible_moves, my_id, my_body, my_length, snakes, board_width, board_height)
     logging.debug(f'safe moves: {safe_moves}')
 
     if not safe_moves:
-        logging.debug(f'default move played: {True}')
+        logging.debug(f'Turn {turn_number} default move played: {True}')
         return {"move": "down"}
 
+    safe_moves = avoid_hazards(hazards, safe_moves, possible_moves)
     target = get_closest_target(my_head, foods)
     if target:
-        moves_to_target = sorted(safe_moves, key=lambda move: spatial.distance.euclidean([possible_moves[move]['x'], possible_moves[move]['y']], [target['x'], target['y']]))
-        chosen_move = moves_to_target[0]
-        logging.debug(f'chosen move to target: {chosen_move}')
+        safe_moves = sorted(safe_moves, key=lambda move: spatial.distance.euclidean([possible_moves[move]['x'], possible_moves[move]['y']], [target['x'], target['y']]))
+        logging.debug(f'sorted safe moves by targets: {safe_moves}')
+        chosen_move = safe_moves[0]
+        logging.debug(f'Turn {turn_number} target chosen move: {chosen_move}')
         return {"move": chosen_move}
 
+
     chosen_move = random.choice(safe_moves)
-    logging.debug(f'random chosen move: {chosen_move}')
+    logging.info(f'Turn {turn_number} chosen move: {chosen_move}')
     return {"move": chosen_move}
 
 game = {"info": info, "start": start, "move": move, "end": end}
