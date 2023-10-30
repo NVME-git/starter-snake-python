@@ -72,7 +72,8 @@ def is_move_safe(direction:str, location: Dict, my_id:str, my_body: List[Dict], 
             nearby_dangerous_snake_head=True
             logging.debug(f"nearby dangerous snake head: {snake_name} -> {nearby_dangerous_snake_head}")
 
-    if location["x"] < 0 or location["x"] >= board_width or location["y"] < 0 or location["y"] >= board_height or nearby_dangerous_snake_head:
+    adjacent_boundary = location["x"] < 0 or location["x"] >= board_width or location["y"] < 0 or location["y"] >= board_height 
+    if adjacent_boundary or nearby_dangerous_snake_head:
         logging.debug(f"{direction}: adjacent boundary or nearby longer snake's head -> {False}")
         return False
     return True
