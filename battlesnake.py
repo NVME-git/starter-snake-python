@@ -81,8 +81,8 @@ def is_move_safe(direction:str, location: Dict, my_id:str, my_body: List[Dict], 
 def get_safe_moves(possible_moves: Dict, my_id:str, my_body: List[Dict], my_length: int, snakes: List[Dict], board_width: int, board_height: int) -> List[str]:
     return [direction for direction, location in possible_moves.items() if is_move_safe(direction, location, my_id, my_body, my_length, snakes, board_width, board_height)]
 
-def get_closest_target(my_head: Dict, targets: List[Dict]) -> Dict:
-    targets_distance = [(target, abs(my_head["x"] - target["x"]) + abs(my_head["y"] - target["y"])) for target in targets]
+def get_closest_safe_target(my_head: Dict, targets: List[Dict], hazards:List[Dict]) -> Dict:
+    targets_distance = [(target, abs(my_head["x"] - target["x"]) + abs(my_head["y"] - target["y"])) for target in targets if target not in hazards]
     targets_distance.sort(key=lambda x: x[1])
     return targets_distance[0][0] if targets_distance else None
 
@@ -121,7 +121,7 @@ def move(data: Dict) -> Dict:
         return {"move": "down"}
 
     safe_moves = avoid_hazards(hazards, safe_moves, possible_moves)
-    target = get_closest_target(my_head, foods)
+    target = get_closest_safe_target(my_head, foods, hazards)
     if target:
         safe_moves = sorted(safe_moves, key=lambda move: spatial.distance.euclidean([possible_moves[move]['x'], possible_moves[move]['y']], [target['x'], target['y']]))
         logging.debug(f'sorted safe moves by targets: {safe_moves}')
