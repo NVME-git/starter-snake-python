@@ -65,21 +65,36 @@ def is_move_safe(direction:str, location: Dict, my_id:str, my_body: List[Dict], 
                 return False
             logging.debug(f"{direction}: adjacent snake's body -> {False}")
             return False
+
+    adjacent_boundary = location["x"] < 0 or location["x"] >= board_width or location["y"] < 0 or location["y"] >= board_height 
+    if adjacent_boundary:
+        logging.debug(f"{direction}: adjacent boundary -> {False}")
+        return False
+    return True
+
+def get_safe_moves(possible_moves: Dict, my_id:str, my_body: List[Dict], my_length: int, snakes: List[Dict], board_width: int, board_height: int) -> List[str]:
+    return [direction for direction, location in possible_moves.items() if is_move_safe(direction, location, my_id, my_body, my_length, snakes, board_width, board_height)]
+
+def is_move_risky(direction:str, location: Dict, my_id:str, my_length:int ,snakes: List[Dict]) -> bool:
+    logging.debug(f"direction: {direction}")
+    nearby_dangerous_snake_head = False
+    for snake in snakes:
+        snake_name = snake['name']
+        if my_id == snake['id']:
+            logging.debug(f"ignoring my snake's name: {snake_name}")
+            continue 
+        logging.debug(f"snake's name: {snake_name}")
         nearby_head = spatial.distance.euclidean([location["x"],location["y"]], [snake['head']["x"],snake['head']["y"]]) <= 2 
         dangerous_snake = my_length <= snake['length']
         logging.debug(f"nearby head: {nearby_head}, dangerous snake: {dangerous_snake}")
         if nearby_head and dangerous_snake:
             nearby_dangerous_snake_head=True
             logging.debug(f"nearby dangerous snake head: {snake_name} -> {nearby_dangerous_snake_head}")
+            return nearby_dangerous_snake_head
+    return False
 
-    adjacent_boundary = location["x"] < 0 or location["x"] >= board_width or location["y"] < 0 or location["y"] >= board_height 
-    if adjacent_boundary or nearby_dangerous_snake_head:
-        logging.debug(f"{direction}: adjacent boundary or nearby longer snake's head -> {False}")
-        return False
-    return True
-
-def get_safe_moves(possible_moves: Dict, my_id:str, my_body: List[Dict], my_length: int, snakes: List[Dict], board_width: int, board_height: int) -> List[str]:
-    return [direction for direction, location in possible_moves.items() if is_move_safe(direction, location, my_id, my_body, my_length, snakes, board_width, board_height)]
+def get_risky_moves(safe_moves:List[str], possible_moves: Dict, my_id:str, my_length: int, snakes: List[Dict]) -> List[str]:
+    return [direction for direction, location in possible_moves.items() if direction in safe_moves and is_move_risky(direction, location, my_id, my_length, snakes)]
 
 def get_closest_safe_target(my_head: Dict, targets: List[Dict], hazards:List[Dict]) -> Dict:
     targets_distance = [(target, abs(my_head["x"] - target["x"]) + abs(my_head["y"] - target["y"])) for target in targets if target not in hazards]
@@ -116,9 +131,18 @@ def move(data: Dict) -> Dict:
     safe_moves = get_safe_moves(possible_moves, my_id, my_body, my_length, snakes, board_width, board_height)
     logging.debug(f'safe moves: {safe_moves}')
 
+    risky_moves = get_risky_moves(safe_moves, possible_moves, my_id, my_length, snakes)
+    logging.debug(f'risky moves: {risky_moves}')
+
+    safe_moves = [safe_move for safe_move in safe_moves if safe_move not in risky_moves]
+
     if not safe_moves:
-        logging.debug(f'Turn {turn_number} default move played: {True}')
+        if risky_moves:
+            logging.debug(f'Turn {turn_number} no safe move so random risky move played: {True}')
+            return {"move": random.choice(risky_moves)}
+        logging.debug(f'Turn {turn_number} no safe or risky moves so default move played: {True}')
         return {"move": "down"}
+        
 
     safe_moves = avoid_hazards(hazards, safe_moves, possible_moves)
     target = get_closest_safe_target(my_head, foods, hazards)
