@@ -138,10 +138,13 @@ def move(data: Dict) -> Dict:
 
     if not safe_moves:
         if risky_moves:
-            logging.debug(f'Turn {turn_number} no safe move so random risky move played: {True}')
-            return {"move": random.choice(risky_moves)}
-        logging.debug(f'Turn {turn_number} no safe or risky moves so default move played: {True}')
-        return {"move": "down"}
+            chosen_move = random.choice(risky_moves)
+            logging.debug(f'Turn {turn_number} no safe move so random risky move played: {chosen_move}')
+            return {"move": chosen_move}
+
+        default_move = "down"
+        logging.debug(f'Turn {turn_number} no safe or risky moves so default move played: {default_move}')
+        return {"move": default_move}
         
 
     safe_moves = avoid_hazards(hazards, safe_moves, possible_moves)
